@@ -110,6 +110,21 @@ def score_inverted_linear(value: float, benign: float, stressed: float) -> float
     return max(0.0, min(100.0, pct * 100))
 
 
+def _period_label(history: list) -> str:
+    """Human-readable span of a sparkline's history list (first date → last date)."""
+    if len(history) < 2:
+        return ""
+    start = datetime.strptime(history[0][0], "%Y-%m-%d")
+    end = datetime.strptime(history[-1][0], "%Y-%m-%d")
+    days = (end - start).days
+    if days >= 365:
+        years = days / 365
+        return f"{years:.0f} yr" if abs(years - round(years)) < 0.15 else f"{years:.1f} yr"
+    if days >= 60:
+        return f"{round(days / 30)} mo"
+    return f"{days} d"
+
+
 def _quarter_label(dt: pd.Timestamp) -> str:
     """FRED dates quarterly observations to the start of the period — show
     that as 'Q2 2026' rather than '2026-04-01', which reads like a publish date."""
@@ -775,7 +790,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .bar {{ height: 6px; background: var(--panel-2); position: relative; margin-bottom: 14px; }}
   .bar-fill {{ position: absolute; top: 0; left: 0; bottom: 0; transition: width .6s ease; }}
   .weight {{ font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-dim); letter-spacing: 0.08em; }}
-  .sparkline {{ width: 100%; height: 40px; margin-bottom: 14px; }}
+  .sparkline {{ width: 100%; height: 40px; margin-bottom: 2px; }}
+  .spark-period {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-dim);
+    text-align: right;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }}
   footer {{
     margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule);
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
@@ -1035,6 +1058,8 @@ def render_dashboard(
     for idx, ind in enumerate(indicators):
         color = _score_color(ind.score)
         spark = _sparkline_svg(ind.history, color)
+        period = _period_label(ind.history)
+        period_html = f'<div class="spark-period">{period}</div>' if period else ''
         tooltip_id = f"tooltip-{idx}"
         # Escape any HTML special chars in explanation (they shouldn't occur but be safe)
         explanation_html = (
@@ -1065,6 +1090,7 @@ def render_dashboard(
           </div>
           <div class="ind-note">{ind.note}</div>
           {spark}
+          {period_html}
           <div class="bar"><div class="bar-fill" style="width:{ind.score:.1f}%;background:{color}"></div></div>
           <div class="ind-source">{ind.source} · weight {ind.weight*100:.0f}%{f' · as of {ind.as_of}' if ind.as_of else ''}</div>
         </div>
