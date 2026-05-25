@@ -7,18 +7,14 @@ on:
     - cron: "0 22 * * 1-5"
   workflow_dispatch:   # also allows manual trigger from the Actions tab
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   monitor:
     runs-on: ubuntu-latest
     permissions:
       contents: write    # so we can commit the updated dashboard.html back to the repo
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
