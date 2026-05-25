@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Credit Cycle Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0c;
+    --panel: #181613;
+    --panel-2: #221f1b;
+    --ink: #f2eee7;
+    --ink-dim: #a09686;
+    --rule: #2e2a25;
+    --accent: #3a7d44;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Libre Caslon Text', Georgia, serif;
+    font-feature-settings: "ss01" on, "ss02" on;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .grain {
+    position: fixed; inset: 0; pointer-events: none; opacity: .035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence baseFrequency='0.9'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    mix-blend-mode: screen;
+    z-index: 100;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 56px 32px 96px; }
+  header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--rule); padding-bottom: 20px; margin-bottom: 48px;
+  }
+  h1 {
+    font-family: 'Libre Caslon Text', serif;
+    font-weight: 700;
+    font-size: 42px;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  h1 em { font-style: italic; color: var(--accent); font-weight: 400; }
+  .timestamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .hero {
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px;
+    margin-bottom: 56px;
+    align-items: stretch;
+  }
+  .score-card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-card::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent);
+  }
+  .score-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 16px;
+  }
+  .score-big {
+    font-family: 'Libre Caslon Text', serif;
+    font-size: 140px; line-height: 0.9; font-weight: 400;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+  .score-big sup {
+    font-size: 28px;
+    color: var(--ink-dim);
+    top: -68px;
+    left: 18px;
+    margin-left: 4px;
+    letter-spacing: 0.02em;
+    font-weight: 400;
+  }
+  .score-band {
+    margin-top: 16px;
+    font-size: 28px; font-style: italic;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .score-action {
+    margin-top: 20px;
+    font-size: 16px; color: var(--ink-dim);
+    max-width: 360px;
+  }
+  .legend {
+    background: var(--panel-2);
+    border: 1px solid var(--rule);
+    padding: 32px;
+  }
+  .legend h2 {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim); margin: 0 0 20px;
+  }
+  .band-row { display: flex; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px dotted var(--rule); }
+  .band-row:last-child { border-bottom: none; }
+  .band-dot { width: 12px; height: 12px; border-radius: 50%; }
+  .band-range { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-dim); min-width: 56px; }
+  .band-name { font-size: 18px; flex: 1; }
+  .band-name em { font-style: italic; color: var(--ink-dim); }
+  .trend-section {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    padding: 32px;
+    margin-bottom: 56px;
+  }
+  .trend-section h2 {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim); margin: 0 0 24px;
+  }
+  .trend-chart { width: 100%; height: auto; display: block; }
+  .trend-empty {
+    padding: 60px 20px; text-align: center;
+    color: var(--ink-dim); font-style: italic;
+    font-size: 16px;
+  }
+  .section-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-dim);
+    margin: 0 0 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .indicator {
+    background: var(--panel);
+    padding: 28px;
+    display: flex; flex-direction: column;
+    min-height: 200px;
+    position: relative;
+  }
+  .ind-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 12px; }
+  .ind-name-wrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .ind-name { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .info-btn {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--ink-dim);
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 700;
+    font-style: italic;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0; line-height: 1;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+  }
+  .info-btn:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .info-btn[aria-expanded="true"] {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  .tooltip {
+    position: absolute;
+    top: 60px;
+    left: 28px;
+    right: 28px;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    padding: 18px 20px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .tooltip.open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  .tooltip::before {
+    content: "";
+    position: absolute;
+    top: -7px; left: 18px;
+    width: 12px; height: 12px;
+    background: var(--bg);
+    border-left: 1px solid var(--accent);
+    border-top: 1px solid var(--accent);
+    transform: rotate(45deg);
+  }
+  .tooltip-close {
+    position: absolute;
+    top: 8px; right: 12px;
+    background: none; border: none; color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace; font-size: 16px;
+    cursor: pointer; padding: 4px;
+    line-height: 1;
+  }
+  .tooltip-close:hover { color: var(--ink); }
+  .ind-score {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 700;
+    padding: 4px 10px;
+    border: 1px solid currentColor;
+  }
+  .ind-note { color: var(--ink-dim); font-size: 14px; margin-bottom: 18px; }
+  .ind-source { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-dim); letter-spacing: 0.08em; text-transform: uppercase; margin-top: auto; }
+  .bar { height: 6px; background: var(--panel-2); position: relative; margin-bottom: 14px; }
+  .bar-fill { position: absolute; top: 0; left: 0; bottom: 0; transition: width .6s ease; }
+  .weight { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-dim); letter-spacing: 0.08em; }
+  .sparkline { width: 100%; height: 40px; margin-bottom: 14px; }
+  footer {
+    margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--ink-dim); letter-spacing: 0.05em;
+    display: flex; justify-content: space-between;
+  }
+  @media (max-width: 820px) {
+    .hero, .grid { grid-template-columns: 1fr; }
+    .score-big { font-size: 100px; }
+    h1 { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="wrap">
+  <header>
+    <h1>Credit Cycle <em>Monitor</em></h1>
+    <span class="timestamp">2026-05-25 00:58 UTC</span>
+  </header>
+
+  <section class="hero">
+    <div class="score-card">
+      <div class="score-label">Composite Stress Score</div>
+      <div class="score-big">21<sup>/100</sup></div>
+      <div class="score-band">Benign</div>
+      <div class="score-action">Credit conditions are calm. Stay invested.</div>
+    </div>
+    <div class="legend">
+      <h2>Reading the Score</h2>
+      <div class="band-row"><span class="band-dot" style="background:#3a7d44"></span><span class="band-range">0—25</span><span class="band-name">Benign <em>— stay invested</em></span></div>
+      <div class="band-row"><span class="band-dot" style="background:#c9a227"></span><span class="band-range">25—50</span><span class="band-name">Normal <em>— monitor</em></span></div>
+      <div class="band-row"><span class="band-dot" style="background:#d96704"></span><span class="band-range">50—75</span><span class="band-name">Tightening <em>— review risk</em></span></div>
+      <div class="band-row"><span class="band-dot" style="background:#b3001b"></span><span class="band-range">75—100</span><span class="band-name">Stressed <em>— go defensive</em></span></div>
+    </div>
+  </section>
+
+  <h2 class="section-title">Composite Trend</h2>
+  <section class="trend-section">
+    <div class="trend-empty">Not enough history yet — run daily to build a trend.</div>
+  </section>
+
+  <h2 class="section-title">Component Indicators</h2>
+  <div class="grid">
+    
+        <div class="indicator">
+          <div class="ind-head">
+            <span class="ind-name-wrap">
+              <span class="ind-name">KRE/SPY 3-Month</span>
+              
+              <button class="info-btn" aria-controls="tooltip-0" aria-expanded="false" aria-label="More info about KRE/SPY 3-Month">i</button>
+              <div class="tooltip" id="tooltip-0" role="tooltip">
+                <button class="tooltip-close" aria-label="Close">×</button>
+                Regional bank ETF (KRE) performance vs. S&amp;P 500 (SPY) over 3 months. Banks are sensitive to credit conditions, deposit flight, and commercial real estate exposure. When bank stocks meaningfully underperform the broad market, equity investors are sniffing out credit problems before they show up in lagging economic data.
+              </div>
+            
+            </span>
+            <span class="ind-score" style="color:#c9a227">46</span>
+          </div>
+          <div class="ind-note">-6.6% — bank relative perf</div>
+          <svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M 0.0,60.6 L 1.1,50.8 L 2.2,53.8 L 3.4,49.3 L 4.5,27.9 L 5.6,32.6 L 6.7,53.9 L 7.9,54.1 L 9.0,53.5 L 10.1,57.8 L 11.2,45.3 L 12.4,45.4 L 13.5,37.4 L 14.6,21.2 L 15.7,7.9 L 16.9,0.0 L 18.0,0.5 L 19.1,5.6 L 20.2,10.9 L 21.3,18.3 L 22.5,18.3 L 23.6,13.4 L 24.7,12.2 L 25.8,16.8 L 27.0,18.7 L 28.1,15.1 L 29.2,37.3 L 30.3,42.5 L 31.5,36.9 L 32.6,28.7 L 33.7,58.6 L 34.8,49.9 L 36.0,48.7 L 37.1,51.2 L 38.2,56.0 L 39.3,63.6 L 40.4,70.3 L 41.6,69.6 L 42.7,75.7 L 43.8,71.5 L 44.9,71.4 L 46.1,74.1 L 47.2,75.8 L 48.3,75.3 L 49.4,68.4 L 50.6,61.1 L 51.7,56.6 L 52.8,49.4 L 53.9,50.6 L 55.1,40.4 L 56.2,40.4 L 57.3,35.9 L 58.4,38.9 L 59.6,36.9 L 60.7,36.0 L 61.8,32.9 L 62.9,32.1 L 64.0,29.9 L 65.2,22.8 L 66.3,30.8 L 67.4,32.9 L 68.5,41.4 L 69.7,47.4 L 70.8,52.0 L 71.9,45.7 L 73.0,42.1 L 74.2,46.9 L 75.3,56.5 L 76.4,47.5 L 77.5,62.0 L 78.7,52.7 L 79.8,47.1 L 80.9,58.8 L 82.0,57.6 L 83.1,59.6 L 84.3,64.6 L 85.4,61.3 L 86.5,62.9 L 87.6,67.5 L 88.8,73.3 L 89.9,85.7 L 91.0,87.5 L 92.1,100.0 L 93.3,99.4 L 94.4,99.0 L 95.5,90.6 L 96.6,89.8 L 97.8,82.0 L 98.9,82.8 L 100.0,83.8" fill="none" stroke="#c9a227" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+    </svg>
+          <div class="bar"><div class="bar-fill" style="width:46.4%;background:#c9a227"></div></div>
+          <div class="ind-source">Yahoo: KRE, SPY · weight 10%</div>
+        </div>
+        
+
+        <div class="indicator">
+          <div class="ind-head">
+            <span class="ind-name-wrap">
+              <span class="ind-name">EM Debt (EMB) 6-Month</span>
+              
+              <button class="info-btn" aria-controls="tooltip-1" aria-expanded="false" aria-label="More info about EM Debt (EMB) 6-Month">i</button>
+              <div class="tooltip" id="tooltip-1" role="tooltip">
+                <button class="tooltip-close" aria-label="Close">×</button>
+                Emerging-market sovereign debt ETF (EMB) price change over 6 months. When global risk appetite contracts or the USD strengthens, EM sovereigns get hit first. Especially relevant for your LatAm holdings (NU, BLX) — EM stress is often a leading indicator of broader credit cycle turns.
+              </div>
+            
+            </span>
+            <span class="ind-score" style="color:#3a7d44">7</span>
+          </div>
+          <div class="ind-note">+1.8% — EM sovereign debt</div>
+          <svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M 0.0,40.7 L 1.1,39.8 L 2.2,44.1 L 3.4,55.0 L 4.5,37.6 L 5.6,38.0 L 6.7,32.6 L 7.9,30.3 L 9.0,31.2 L 10.1,33.9 L 11.2,33.7 L 12.4,35.8 L 13.5,36.3 L 14.6,35.9 L 15.7,35.0 L 16.9,29.5 L 18.0,23.8 L 19.1,23.2 L 20.2,17.5 L 21.3,17.3 L 22.5,11.1 L 23.6,7.3 L 24.7,2.7 L 25.8,1.8 L 27.0,4.3 L 28.1,2.0 L 29.2,0.7 L 30.3,2.0 L 31.5,0.0 L 32.6,1.4 L 33.7,0.2 L 34.8,7.9 L 36.0,17.9 L 37.1,10.6 L 38.2,21.8 L 39.3,36.2 L 40.4,31.4 L 41.6,31.6 L 42.7,38.7 L 43.8,56.9 L 44.9,67.4 L 46.1,59.0 L 47.2,51.0 L 48.3,67.9 L 49.4,61.7 L 50.6,95.4 L 51.7,74.7 L 52.8,85.6 L 53.9,66.3 L 55.1,88.4 L 56.2,100.0 L 57.3,96.4 L 58.4,77.7 L 59.6,68.8 L 60.7,66.3 L 61.8,67.0 L 62.9,65.9 L 64.0,40.2 L 65.2,31.0 L 66.3,31.3 L 67.4,19.1 L 68.5,9.3 L 69.7,14.1 L 70.8,21.0 L 71.9,4.5 L 73.0,6.3 L 74.2,16.8 L 75.3,11.1 L 76.4,21.4 L 77.5,15.2 L 78.7,19.1 L 79.8,21.0 L 80.9,31.3 L 82.0,24.4 L 83.1,20.3 L 84.3,31.5 L 85.4,21.4 L 86.5,4.2 L 87.6,12.7 L 88.8,6.9 L 89.9,11.1 L 91.0,16.8 L 92.1,21.0 L 93.3,21.0 L 94.4,40.0 L 95.5,42.1 L 96.6,50.6 L 97.8,35.2 L 98.9,33.6 L 100.0,29.5" fill="none" stroke="#3a7d44" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+    </svg>
+          <div class="bar"><div class="bar-fill" style="width:6.7%;background:#3a7d44"></div></div>
+          <div class="ind-source">Yahoo: EMB · weight 10%</div>
+        </div>
+        
+
+        <div class="indicator">
+          <div class="ind-head">
+            <span class="ind-name-wrap">
+              <span class="ind-name">HYG/LQD 3-Month</span>
+              
+              <button class="info-btn" aria-controls="tooltip-2" aria-expanded="false" aria-label="More info about HYG/LQD 3-Month">i</button>
+              <div class="tooltip" id="tooltip-2" role="tooltip">
+                <button class="tooltip-close" aria-label="Close">×</button>
+                Ratio of high-yield bond ETF (HYG) to investment-grade ETF (LQD). When this ratio falls, investors are dumping junk and crowding into safer credit — a flight-to-quality signal. It's a faster, more responsive proxy for HY OAS that updates intraday.
+              </div>
+            
+            </span>
+            <span class="ind-score" style="color:#3a7d44">0</span>
+          </div>
+          <div class="ind-note">+2.3% — junk vs IG</div>
+          <svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <path d="M 0.0,69.8 L 1.1,65.3 L 2.2,52.9 L 3.4,40.5 L 4.5,51.2 L 5.6,55.4 L 6.7,59.4 L 7.9,60.5 L 9.0,57.1 L 10.1,57.7 L 11.2,59.1 L 12.4,51.6 L 13.5,46.1 L 14.6,49.9 L 15.7,49.8 L 16.9,70.9 L 18.0,60.5 L 19.1,55.6 L 20.2,67.5 L 21.3,64.1 L 22.5,82.4 L 23.6,91.5 L 24.7,96.7 L 25.8,88.9 L 27.0,90.4 L 28.1,85.0 L 29.2,94.4 L 30.3,96.1 L 31.5,90.4 L 32.6,95.6 L 33.7,100.0 L 34.8,90.1 L 36.0,95.5 L 37.1,86.4 L 38.2,86.5 L 39.3,91.8 L 40.4,91.7 L 41.6,73.2 L 42.7,52.0 L 43.8,55.5 L 44.9,49.1 L 46.1,55.0 L 47.2,58.8 L 48.3,57.9 L 49.4,61.9 L 50.6,51.2 L 51.7,51.2 L 52.8,56.1 L 53.9,57.6 L 55.1,52.2 L 56.2,52.6 L 57.3,71.3 L 58.4,59.9 L 59.6,55.0 L 60.7,61.5 L 61.8,49.7 L 62.9,52.7 L 64.0,45.5 L 65.2,41.5 L 66.3,46.2 L 67.4,46.6 L 68.5,47.6 L 69.7,48.1 L 70.8,36.4 L 71.9,42.9 L 73.0,45.7 L 74.2,41.4 L 75.3,42.4 L 76.4,38.4 L 77.5,36.2 L 78.7,24.7 L 79.8,31.2 L 80.9,23.2 L 82.0,16.0 L 83.1,17.3 L 84.3,17.4 L 85.4,25.3 L 86.5,32.3 L 87.6,30.9 L 88.8,33.5 L 89.9,31.8 L 91.0,24.6 L 92.1,24.7 L 93.3,25.1 L 94.4,19.8 L 95.5,9.5 L 96.6,0.0 L 97.8,4.7 L 98.9,10.3 L 100.0,16.5" fill="none" stroke="#3a7d44" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+    </svg>
+          <div class="bar"><div class="bar-fill" style="width:0.0%;background:#3a7d44"></div></div>
+          <div class="ind-source">Yahoo: HYG, LQD · weight 5%</div>
+        </div>
+        
+  </div>
+
+  <footer>
+    <span>FRED · Yahoo Finance · Updated 2026-05-25 00:58 UTC</span>
+    <span>v1.1</span>
+  </footer>
+</div>
+
+<script>
+  // Tooltip toggling: click the (i) to open, click again or click outside to close
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.info-btn');
+    const insideTooltip = e.target.closest('.tooltip');
+    if (btn) {
+      const id = btn.getAttribute('aria-controls');
+      const tooltip = document.getElementById(id);
+      const wasOpen = tooltip.classList.contains('open');
+      // Close all open tooltips
+      document.querySelectorAll('.tooltip.open').forEach(t => t.classList.remove('open'));
+      document.querySelectorAll('.info-btn[aria-expanded="true"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+      // Open this one if it was closed
+      if (!wasOpen) {
+        tooltip.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    } else if (e.target.classList.contains('tooltip-close')) {
+      const tooltip = e.target.closest('.tooltip');
+      tooltip.classList.remove('open');
+      const btn = document.querySelector('.info-btn[aria-controls="' + tooltip.id + '"]');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    } else if (!insideTooltip) {
+      // Click outside any tooltip — close all
+      document.querySelectorAll('.tooltip.open').forEach(t => t.classList.remove('open'));
+      document.querySelectorAll('.info-btn[aria-expanded="true"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    }
+  });
+
+  // ESC closes tooltips
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.tooltip.open').forEach(t => t.classList.remove('open'));
+      document.querySelectorAll('.info-btn[aria-expanded="true"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    }
+  });
+</script>
+</body>
+</html>
