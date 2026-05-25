@@ -188,6 +188,9 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
     # 1. High-yield OAS — the single most important credit signal
     try:
         s = fetch_fred_series("BAMLH0A0HYM2", api_key)
+        # FRED returns this series in percent (e.g. 3.42), but our thresholds
+        # and display are in basis points. Convert pct -> bps.
+        s = s * 100
         v = float(s.iloc[-1])
         # 300bps benign, 1000bps crisis-level
         score = score_linear(v, benign=300, stressed=1000)
@@ -207,6 +210,9 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
     # 2. Investment-grade OAS
     try:
         s = fetch_fred_series("BAMLC0A0CM", api_key)
+        # FRED returns this series in percent (e.g. 0.95), but our thresholds
+        # and display are in basis points. Convert pct -> bps.
+        s = s * 100
         v = float(s.iloc[-1])
         score = score_linear(v, benign=80, stressed=300)
         results.append(IndicatorResult(
