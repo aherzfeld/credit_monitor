@@ -110,6 +110,12 @@ def score_inverted_linear(value: float, benign: float, stressed: float) -> float
     return max(0.0, min(100.0, pct * 100))
 
 
+def _quarter_label(dt: pd.Timestamp) -> str:
+    """FRED dates quarterly observations to the start of the period — show
+    that as 'Q2 2026' rather than '2026-04-01', which reads like a publish date."""
+    return f"Q{(dt.month - 1) // 3 + 1} {dt.year}"
+
+
 def _series_to_history(s: pd.Series, points: int = 90) -> list:
     tail = s.tail(points)
     return [(d.strftime("%Y-%m-%d"), float(v)) for d, v in tail.items()]
@@ -272,7 +278,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(s),
             explanation=EXPLANATIONS["sloos"],
             benign=-10, stressed=50, value_fmt="{:.0f}%",
-            as_of=s.index[-1].strftime("%Y-%m-%d"),
+            as_of=_quarter_label(s.index[-1]),
         ))
     except Exception as e:
         print(f"[WARN] SLOOS failed: {e}", file=sys.stderr)
@@ -292,7 +298,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(s),
             explanation=EXPLANATIONS["cc_delinq"],
             benign=2.0, stressed=6.0, value_fmt="{:.1f}%",
-            as_of=s.index[-1].strftime("%Y-%m-%d"),
+            as_of=_quarter_label(s.index[-1]),
         ))
     except Exception as e:
         print(f"[WARN] Credit card delinq failed: {e}", file=sys.stderr)
