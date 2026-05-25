@@ -48,6 +48,10 @@ class IndicatorResult:
     note: str = ""
     history: list = field(default_factory=list)   # list of (date_str, value)
     explanation: str = ""    # tooltip text shown on info button click
+    benign: Optional[float] = None      # value at score 0
+    stressed: Optional[float] = None    # value at score 100
+    inverted: bool = False              # True if lower value = more stress
+    value_fmt: str = "{:.1f}"           # format spec for band thresholds
 
 
 def fetch_fred_series(series_id: str, api_key: str, lookback_days: int = 730) -> pd.Series:
@@ -203,6 +207,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             note=f"{v:.0f} bps — junk bond risk premium",
             history=_series_to_history(s),
             explanation=EXPLANATIONS["hy_oas"],
+            benign=300, stressed=1000, value_fmt="{:.0f} bps",
         ))
     except Exception as e:
         print(f"[WARN] HY OAS failed: {e}", file=sys.stderr)
@@ -224,6 +229,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             note=f"{v:.0f} bps — corporate spread",
             history=_series_to_history(s),
             explanation=EXPLANATIONS["ig_oas"],
+            benign=80, stressed=300, value_fmt="{:.0f} bps",
         ))
     except Exception as e:
         print(f"[WARN] IG OAS failed: {e}", file=sys.stderr)
@@ -243,6 +249,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             note=f"{v:.2f}% — {'inverted' if v < 0 else 'positive'}",
             history=_series_to_history(s),
             explanation=EXPLANATIONS["yield_curve"],
+            benign=1.5, stressed=-1.0, inverted=True, value_fmt="{:.2f}%",
         ))
     except Exception as e:
         print(f"[WARN] 2s10s failed: {e}", file=sys.stderr)
@@ -261,6 +268,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             note=f"{v:.1f}% net tightening",
             history=_series_to_history(s),
             explanation=EXPLANATIONS["sloos"],
+            benign=-10, stressed=50, value_fmt="{:.0f}%",
         ))
     except Exception as e:
         print(f"[WARN] SLOOS failed: {e}", file=sys.stderr)
@@ -279,6 +287,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             note=f"{v:.2f}% — consumer credit health",
             history=_series_to_history(s),
             explanation=EXPLANATIONS["cc_delinq"],
+            benign=2.0, stressed=6.0, value_fmt="{:.1f}%",
         ))
     except Exception as e:
         print(f"[WARN] Credit card delinq failed: {e}", file=sys.stderr)
@@ -303,6 +312,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             note=f"{pct_change:+.1f}% — bank relative perf",
             history=_series_to_history(ratio),
             explanation=EXPLANATIONS["kre_spy"],
+            benign=5.0, stressed=-20.0, inverted=True, value_fmt="{:+.1f}%",
         ))
     except Exception as e:
         print(f"[WARN] KRE/SPY failed: {e}", file=sys.stderr)
@@ -323,6 +333,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             note=f"{pct_change:+.1f}% — EM sovereign debt",
             history=_series_to_history(emb),
             explanation=EXPLANATIONS["emb"],
+            benign=3.0, stressed=-15.0, inverted=True, value_fmt="{:+.1f}%",
         ))
     except Exception as e:
         print(f"[WARN] EMB failed: {e}", file=sys.stderr)
@@ -345,6 +356,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             note=f"{pct_change:+.1f}% — junk vs IG",
             history=_series_to_history(ratio),
             explanation=EXPLANATIONS["hyg_lqd"],
+            benign=2.0, stressed=-10.0, inverted=True, value_fmt="{:+.1f}%",
         ))
     except Exception as e:
         print(f"[WARN] HYG/LQD failed: {e}", file=sys.stderr)
@@ -626,6 +638,40 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     line-height: 1;
   }}
   .tooltip-close:hover {{ color: var(--ink); }}
+  .tb-bands {{
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dotted var(--rule);
+  }}
+  .tb-title {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 10px;
+  }}
+  .tb-row {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }}
+  .tb-dot {{
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }}
+  .tb-name {{
+    color: var(--ink-dim);
+    min-width: 86px;
+    letter-spacing: 0.04em;
+  }}
+  .tb-val {{
+    color: var(--ink);
+    margin-left: auto;
+  }}
   .ind-score {{
     font-family: 'JetBrains Mono', monospace;
     font-size: 14px; font-weight: 700;
@@ -855,6 +901,30 @@ def _composite_chart_svg(history: list[tuple[str, float]]) -> str:
     </svg>'''
 
 
+def _score_bands_html(ind: IndicatorResult) -> str:
+    """Render the four scoring bands (Benign/Normal/Tightening/Stressed) for an
+    indicator, showing the value range that maps to each band."""
+    if ind.benign is None or ind.stressed is None:
+        return ""
+    span = ind.stressed - ind.benign
+    t25, t50, t75 = (ind.benign + q * span for q in (0.25, 0.50, 0.75))
+    fmt = ind.value_fmt.format
+    band_colors = ("#3a7d44", "#c9a227", "#d96704", "#b3001b")
+    band_names = ("Benign", "Normal", "Tightening", "Stressed")
+    if not ind.inverted:
+        ranges = (f"&lt; {fmt(t25)}", f"{fmt(t25)} – {fmt(t50)}",
+                  f"{fmt(t50)} – {fmt(t75)}", f"≥ {fmt(t75)}")
+    else:
+        ranges = (f"&gt; {fmt(t25)}", f"{fmt(t50)} – {fmt(t25)}",
+                  f"{fmt(t75)} – {fmt(t50)}", f"≤ {fmt(t75)}")
+    rows = "".join(
+        f'<div class="tb-row"><span class="tb-dot" style="background:{c}"></span>'
+        f'<span class="tb-name">{n}</span><span class="tb-val">{r}</span></div>'
+        for n, r, c in zip(band_names, ranges, band_colors)
+    )
+    return f'<div class="tb-bands"><div class="tb-title">Scoring bands</div>{rows}</div>'
+
+
 def _score_color(score: float) -> str:
     if score < 25: return "#3a7d44"
     if score < 50: return "#c9a227"
@@ -881,13 +951,15 @@ def render_dashboard(
             .replace("<", "&lt;")
             .replace(">", "&gt;")
         ) if ind.explanation else "No description available."
+        bands_html = _score_bands_html(ind)
         info_section = ""
         if ind.explanation:
             info_section = f'''
               <button class="info-btn" aria-controls="{tooltip_id}" aria-expanded="false" aria-label="More info about {ind.name}">i</button>
               <div class="tooltip" id="{tooltip_id}" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                {explanation_html}
+                <div class="tooltip-text">{explanation_html}</div>
+                {bands_html}
               </div>
             '''
         cards.append(f"""
