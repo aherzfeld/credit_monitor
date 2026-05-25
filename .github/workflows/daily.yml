@@ -1,0 +1,49 @@
+name: Credit Monitor Daily Run
+
+# Runs every weekday at 22:00 UTC (after US market close).
+# Adjust the cron expression to your preferred time.
+on:
+  schedule:
+    - cron: "0 22 * * 1-5"
+  workflow_dispatch:   # also allows manual trigger from the Actions tab
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write    # so we can commit the updated dashboard.html back to the repo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Build config.yaml from secrets
+        run: |
+          cat > config.yaml <<EOF
+          fred_api_key: "${{ secrets.FRED_API_KEY }}"
+          email:
+            enabled: true
+            alert_threshold: 50
+            smtp_host: "smtp.gmail.com"
+            smtp_port: 465
+            smtp_user: "${{ secrets.SMTP_USER }}"
+            smtp_password: "${{ secrets.SMTP_PASSWORD }}"
+            from_addr: "${{ secrets.SMTP_USER }}"
+            to_addr: "${{ secrets.ALERT_TO_ADDR }}"
+          EOF
+
+      - name: Run monitor
+        run: python credit_monitor.py
+
+      - name: Commit dashboard
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add dashboard.html .state.json composite_history.csv || true
+          git diff --cached --quiet || git commit -m "Daily update: $(date -u +%Y-%m-%d)"
+          git push || true
