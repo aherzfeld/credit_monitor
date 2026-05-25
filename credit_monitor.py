@@ -154,8 +154,7 @@ EXPLANATIONS = {
         "TIGHTER lending standards on commercial & industrial loans, "
         "released quarterly by the Fed. When banks pull back on lending, "
         "credit availability shrinks across the economy. Widespread "
-        "tightening (>10%) typically precedes recession by 6–12 months. "
-        "Especially relevant to bank holdings like KB, NU, BLX."
+        "tightening (>10%) typically precedes recession by 6–12 months."
     ),
     "cc_delinq": (
         "% of credit card loan balances 30+ days past due across all US "
@@ -174,8 +173,7 @@ EXPLANATIONS = {
     "emb": (
         "Emerging-market sovereign debt ETF (EMB) price change over 6 months. "
         "When global risk appetite contracts or the USD strengthens, EM "
-        "sovereigns get hit first. Especially relevant for your LatAm "
-        "holdings (NU, BLX) — EM stress is often a leading indicator of "
+        "sovereigns get hit first. EM stress is often a leading indicator of "
         "broader credit cycle turns."
     ),
     "hyg_lqd": (
