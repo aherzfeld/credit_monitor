@@ -12,14 +12,13 @@ USAGE
 3. Install deps: pip install -r requirements.txt
 4. Run: python credit_monitor.py
 
-The script writes dashboard.html and (optionally) emails an alert.
+The script writes index.html and (optionally) emails an alert.
 Schedule it daily via cron, Windows Task Scheduler, or GitHub Actions.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import smtplib
 import sys
 from dataclasses import dataclass, field, asdict
@@ -52,6 +51,7 @@ class IndicatorResult:
     stressed: Optional[float] = None    # value at score 100
     inverted: bool = False              # True if lower value = more stress
     value_fmt: str = "{:.1f}"           # format spec for band thresholds
+    as_of: Optional[str] = None         # ISO date of latest underlying data point
 
 
 def fetch_fred_series(series_id: str, api_key: str, lookback_days: int = 730) -> pd.Series:
@@ -208,6 +208,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(s),
             explanation=EXPLANATIONS["hy_oas"],
             benign=300, stressed=1000, value_fmt="{:.0f} bps",
+            as_of=s.index[-1].strftime("%Y-%m-%d"),
         ))
     except Exception as e:
         print(f"[WARN] HY OAS failed: {e}", file=sys.stderr)
@@ -230,6 +231,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(s),
             explanation=EXPLANATIONS["ig_oas"],
             benign=80, stressed=300, value_fmt="{:.0f} bps",
+            as_of=s.index[-1].strftime("%Y-%m-%d"),
         ))
     except Exception as e:
         print(f"[WARN] IG OAS failed: {e}", file=sys.stderr)
@@ -250,6 +252,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(s),
             explanation=EXPLANATIONS["yield_curve"],
             benign=1.5, stressed=-1.0, inverted=True, value_fmt="{:.2f}%",
+            as_of=s.index[-1].strftime("%Y-%m-%d"),
         ))
     except Exception as e:
         print(f"[WARN] 2s10s failed: {e}", file=sys.stderr)
@@ -260,7 +263,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
         v = float(s.iloc[-1])
         score = score_linear(v, benign=-10, stressed=50)
         results.append(IndicatorResult(
-            name="SLOOS C&I Tightening",
+            name="SLOOS C&I Survey",
             value=v,
             score=score,
             weight=0.15,
@@ -269,6 +272,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(s),
             explanation=EXPLANATIONS["sloos"],
             benign=-10, stressed=50, value_fmt="{:.0f}%",
+            as_of=s.index[-1].strftime("%Y-%m-%d"),
         ))
     except Exception as e:
         print(f"[WARN] SLOOS failed: {e}", file=sys.stderr)
@@ -288,6 +292,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(s),
             explanation=EXPLANATIONS["cc_delinq"],
             benign=2.0, stressed=6.0, value_fmt="{:.1f}%",
+            as_of=s.index[-1].strftime("%Y-%m-%d"),
         ))
     except Exception as e:
         print(f"[WARN] Credit card delinq failed: {e}", file=sys.stderr)
@@ -313,6 +318,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(ratio),
             explanation=EXPLANATIONS["kre_spy"],
             benign=5.0, stressed=-20.0, inverted=True, value_fmt="{:+.1f}%",
+            as_of=ratio.index[-1].strftime("%Y-%m-%d"),
         ))
     except Exception as e:
         print(f"[WARN] KRE/SPY failed: {e}", file=sys.stderr)
@@ -334,6 +340,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(emb),
             explanation=EXPLANATIONS["emb"],
             benign=3.0, stressed=-15.0, inverted=True, value_fmt="{:+.1f}%",
+            as_of=emb.index[-1].strftime("%Y-%m-%d"),
         ))
     except Exception as e:
         print(f"[WARN] EMB failed: {e}", file=sys.stderr)
@@ -357,6 +364,7 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
             history=_series_to_history(ratio),
             explanation=EXPLANATIONS["hyg_lqd"],
             benign=2.0, stressed=-10.0, inverted=True, value_fmt="{:+.1f}%",
+            as_of=ratio.index[-1].strftime("%Y-%m-%d"),
         ))
     except Exception as e:
         print(f"[WARN] HYG/LQD failed: {e}", file=sys.stderr)
@@ -1054,7 +1062,7 @@ def render_dashboard(
           <div class="ind-note">{ind.note}</div>
           {spark}
           <div class="bar"><div class="bar-fill" style="width:{ind.score:.1f}%;background:{color}"></div></div>
-          <div class="ind-source">{ind.source} · weight {ind.weight*100:.0f}%</div>
+          <div class="ind-source">{ind.source} · weight {ind.weight*100:.0f}%{f' · as of {ind.as_of}' if ind.as_of else ''}</div>
         </div>
         """)
     trend = _composite_chart_svg(composite_history or [])
