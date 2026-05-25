@@ -377,6 +377,86 @@ def composite_score(indicators: list[IndicatorResult]) -> float:
     return weighted / total_weight
 
 
+def backfill_composite_history(cfg: dict, history_path: Path, days: int = 365) -> None:
+    """One-time backfill of composite_history.csv from existing FRED/Yahoo series.
+    Mirrors the weights and thresholds used in build_indicators — keep in sync.
+    """
+    api_key = cfg["fred_api_key"]
+    print(f"[INFO] Backfilling composite history (~{days} days)...")
+
+    # Extra lookback so 6-month relative-change indicators have a reference point.
+    fetch_days = days + 200
+
+    try:
+        hy = fetch_fred_series("BAMLH0A0HYM2", api_key, fetch_days) * 100
+        ig = fetch_fred_series("BAMLC0A0CM", api_key, fetch_days) * 100
+        t10y2y = fetch_fred_series("T10Y2Y", api_key, fetch_days)
+        sloos = fetch_fred_series("DRTSCILM", api_key, fetch_days * 2)
+        cc = fetch_fred_series("DRCCLACBS", api_key, fetch_days * 2)
+        kre = fetch_yahoo("KRE", fetch_days)
+        spy = fetch_yahoo("SPY", fetch_days)
+        emb = fetch_yahoo("EMB", fetch_days)
+        hyg = fetch_yahoo("HYG", fetch_days)
+        lqd = fetch_yahoo("LQD", fetch_days)
+    except Exception as e:
+        print(f"[ERROR] Backfill data fetch failed: {e}", file=sys.stderr)
+        return
+
+    kre_spy = (kre / spy).dropna()
+    hyg_lqd = (hyg / lqd).dropna()
+    master = kre_spy.index
+
+    def ffill(s: pd.Series) -> pd.Series:
+        return s.reindex(master, method="ffill")
+
+    hy_a, ig_a, t10y2y_a = ffill(hy), ffill(ig), ffill(t10y2y)
+    sloos_a, cc_a = ffill(sloos), ffill(cc)
+    emb_a, hyg_lqd_a = ffill(emb), ffill(hyg_lqd)
+
+    kre_spy_3mo = (kre_spy / kre_spy.shift(63) - 1) * 100
+    emb_6mo = (emb_a / emb_a.shift(126) - 1) * 100
+    hyg_lqd_3mo = (hyg_lqd_a / hyg_lqd_a.shift(63) - 1) * 100
+
+    end = master[-1]
+    start = end - pd.Timedelta(days=days)
+    window = master[(master >= start) & (master <= end)]
+
+    weights = {
+        "hy": 0.25, "ig": 0.10, "t10y2y": 0.15, "sloos": 0.15,
+        "cc": 0.10, "kre_spy": 0.10, "emb": 0.10, "hyg_lqd": 0.05,
+    }
+
+    history: list[tuple[str, float]] = []
+    for d in window:
+        s: dict[str, float] = {}
+        v = hy_a.loc[d]
+        if pd.notna(v): s["hy"] = score_linear(float(v), 300, 1000)
+        v = ig_a.loc[d]
+        if pd.notna(v): s["ig"] = score_linear(float(v), 80, 300)
+        v = t10y2y_a.loc[d]
+        if pd.notna(v): s["t10y2y"] = score_inverted_linear(float(v), 1.5, -1.0)
+        v = sloos_a.loc[d]
+        if pd.notna(v): s["sloos"] = score_linear(float(v), -10, 50)
+        v = cc_a.loc[d]
+        if pd.notna(v): s["cc"] = score_linear(float(v), 2.0, 6.0)
+        v = kre_spy_3mo.loc[d]
+        if pd.notna(v): s["kre_spy"] = score_inverted_linear(float(v), 5.0, -20.0)
+        v = emb_6mo.loc[d]
+        if pd.notna(v): s["emb"] = score_inverted_linear(float(v), 3.0, -15.0)
+        v = hyg_lqd_3mo.loc[d]
+        if pd.notna(v): s["hyg_lqd"] = score_inverted_linear(float(v), 2.0, -10.0)
+
+        if not s:
+            continue
+        total_w = sum(weights[k] for k in s)
+        composite = sum(s[k] * weights[k] for k in s) / total_w
+        history.append((d.strftime("%Y-%m-%d"), composite))
+
+    lines = ["date,composite"] + [f"{d},{v:.2f}" for d, v in history]
+    history_path.write_text("\n".join(lines) + "\n")
+    print(f"[INFO] Backfilled {len(history)} days into {history_path.name}")
+
+
 def append_history(score: float, history_path: Path) -> list[tuple[str, float]]:
     """Append today's composite score to history CSV. Returns the full history."""
     today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -1074,6 +1154,17 @@ def main():
         print(f"  - {i.name}: value={i.value:.2f}  score={i.score:.0f}  weight={i.weight}")
 
     history_path = here / "composite_history.csv"
+
+    # First-time setup: if history is sparse, backfill from existing FRED/Yahoo
+    # series so the trend chart isn't empty before daily runs accumulate.
+    existing = 0
+    if history_path.exists():
+        for ln in history_path.read_text().splitlines():
+            if ln and not ln.startswith("date,"):
+                existing += 1
+    if existing < 5:
+        backfill_composite_history(cfg, history_path)
+
     composite_history = append_history(composite, history_path)
     print(f"[INFO] History now has {len(composite_history)} entries")
 
