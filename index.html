@@ -218,6 +218,40 @@
     line-height: 1;
   }
   .tooltip-close:hover { color: var(--ink); }
+  .tb-bands {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dotted var(--rule);
+  }
+  .tb-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 10px;
+  }
+  .tb-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .tb-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tb-name {
+    color: var(--ink-dim);
+    min-width: 86px;
+    letter-spacing: 0.04em;
+  }
+  .tb-val {
+    color: var(--ink);
+    margin-left: auto;
+  }
   .ind-score {
     font-family: 'JetBrains Mono', monospace;
     font-size: 14px; font-weight: 700;
@@ -248,7 +282,7 @@
 <div class="wrap">
   <header>
     <h1>Credit Cycle <em>Monitor</em></h1>
-    <span class="timestamp">2026-05-25 01:12 UTC</span>
+    <span class="timestamp">2026-05-25 01:26 UTC</span>
   </header>
 
   <section class="hero">
@@ -283,7 +317,8 @@
               <button class="info-btn" aria-controls="tooltip-0" aria-expanded="false" aria-label="More info about High-Yield OAS">i</button>
               <div class="tooltip" id="tooltip-0" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                The spread (in basis points) between yields on US junk bonds and comparable Treasuries. This is the single most important real-time credit-stress signal — it reflects what bond investors are actually demanding to take on default risk. Spreads widen BEFORE defaults actually rise, so it's forward-looking. Rough guide: under 350bps is complacent, 400–500 is normal, 600+ signals stress, 1000+ is crisis.
+                <div class="tooltip-text">The spread (in basis points) between yields on US junk bonds and comparable Treasuries. This is the single most important real-time credit-stress signal — it reflects what bond investors are actually demanding to take on default risk. Spreads widen BEFORE defaults actually rise, so it's forward-looking. Rough guide: under 350bps is complacent, 400–500 is normal, 600+ signals stress, 1000+ is crisis.</div>
+                <div class="tb-bands"><div class="tb-title">Scoring bands</div><div class="tb-row"><span class="tb-dot" style="background:#3a7d44"></span><span class="tb-name">Benign</span><span class="tb-val">&lt; 475 bps</span></div><div class="tb-row"><span class="tb-dot" style="background:#c9a227"></span><span class="tb-name">Normal</span><span class="tb-val">475 bps – 650 bps</span></div><div class="tb-row"><span class="tb-dot" style="background:#d96704"></span><span class="tb-name">Tightening</span><span class="tb-val">650 bps – 825 bps</span></div><div class="tb-row"><span class="tb-dot" style="background:#b3001b"></span><span class="tb-name">Stressed</span><span class="tb-val">≥ 825 bps</span></div></div>
               </div>
             
             </span>
@@ -306,7 +341,8 @@
               <button class="info-btn" aria-controls="tooltip-1" aria-expanded="false" aria-label="More info about Investment-Grade OAS">i</button>
               <div class="tooltip" id="tooltip-1" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                The spread between investment-grade corporate bonds and Treasuries. Less reactive than HY OAS, but when IG spreads widen meaningfully it means stress is spreading from speculative borrowers into blue-chip credit — a more serious signal. Used as confirmation of broader credit deterioration.
+                <div class="tooltip-text">The spread between investment-grade corporate bonds and Treasuries. Less reactive than HY OAS, but when IG spreads widen meaningfully it means stress is spreading from speculative borrowers into blue-chip credit — a more serious signal. Used as confirmation of broader credit deterioration.</div>
+                <div class="tb-bands"><div class="tb-title">Scoring bands</div><div class="tb-row"><span class="tb-dot" style="background:#3a7d44"></span><span class="tb-name">Benign</span><span class="tb-val">&lt; 135 bps</span></div><div class="tb-row"><span class="tb-dot" style="background:#c9a227"></span><span class="tb-name">Normal</span><span class="tb-val">135 bps – 190 bps</span></div><div class="tb-row"><span class="tb-dot" style="background:#d96704"></span><span class="tb-name">Tightening</span><span class="tb-val">190 bps – 245 bps</span></div><div class="tb-row"><span class="tb-dot" style="background:#b3001b"></span><span class="tb-name">Stressed</span><span class="tb-val">≥ 245 bps</span></div></div>
               </div>
             
             </span>
@@ -329,7 +365,8 @@
               <button class="info-btn" aria-controls="tooltip-2" aria-expanded="false" aria-label="More info about 2s10s Yield Curve">i</button>
               <div class="tooltip" id="tooltip-2" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                The difference between 10-year and 2-year Treasury yields. When short rates exceed long rates (inversion), it's historically preceded every US recession in modern history. The Fed's tight policy is squeezing the economy. Counterintuitively, the DIS-inversion (curve steepening back to positive after being inverted) is often the actual recession trigger.
+                <div class="tooltip-text">The difference between 10-year and 2-year Treasury yields. When short rates exceed long rates (inversion), it's historically preceded every US recession in modern history. The Fed's tight policy is squeezing the economy. Counterintuitively, the DIS-inversion (curve steepening back to positive after being inverted) is often the actual recession trigger.</div>
+                <div class="tb-bands"><div class="tb-title">Scoring bands</div><div class="tb-row"><span class="tb-dot" style="background:#3a7d44"></span><span class="tb-name">Benign</span><span class="tb-val">&gt; 0.88%</span></div><div class="tb-row"><span class="tb-dot" style="background:#c9a227"></span><span class="tb-name">Normal</span><span class="tb-val">0.25% – 0.88%</span></div><div class="tb-row"><span class="tb-dot" style="background:#d96704"></span><span class="tb-name">Tightening</span><span class="tb-val">-0.38% – 0.25%</span></div><div class="tb-row"><span class="tb-dot" style="background:#b3001b"></span><span class="tb-name">Stressed</span><span class="tb-val">≤ -0.38%</span></div></div>
               </div>
             
             </span>
@@ -352,7 +389,8 @@
               <button class="info-btn" aria-controls="tooltip-3" aria-expanded="false" aria-label="More info about SLOOS C&I Tightening">i</button>
               <div class="tooltip" id="tooltip-3" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                Senior Loan Officer Opinion Survey — net % of US banks reporting TIGHTER lending standards on commercial &amp; industrial loans, released quarterly by the Fed. When banks pull back on lending, credit availability shrinks across the economy. Widespread tightening (&gt;10%) typically precedes recession by 6–12 months. Especially relevant to bank holdings like KB, NU, BLX.
+                <div class="tooltip-text">Senior Loan Officer Opinion Survey — net % of US banks reporting TIGHTER lending standards on commercial &amp; industrial loans, released quarterly by the Fed. When banks pull back on lending, credit availability shrinks across the economy. Widespread tightening (&gt;10%) typically precedes recession by 6–12 months. Especially relevant to bank holdings like KB, NU, BLX.</div>
+                <div class="tb-bands"><div class="tb-title">Scoring bands</div><div class="tb-row"><span class="tb-dot" style="background:#3a7d44"></span><span class="tb-name">Benign</span><span class="tb-val">&lt; 5%</span></div><div class="tb-row"><span class="tb-dot" style="background:#c9a227"></span><span class="tb-name">Normal</span><span class="tb-val">5% – 20%</span></div><div class="tb-row"><span class="tb-dot" style="background:#d96704"></span><span class="tb-name">Tightening</span><span class="tb-val">20% – 35%</span></div><div class="tb-row"><span class="tb-dot" style="background:#b3001b"></span><span class="tb-name">Stressed</span><span class="tb-val">≥ 35%</span></div></div>
               </div>
             
             </span>
@@ -375,7 +413,8 @@
               <button class="info-btn" aria-controls="tooltip-4" aria-expanded="false" aria-label="More info about Credit Card Delinquency">i</button>
               <div class="tooltip" id="tooltip-4" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                % of credit card loan balances 30+ days past due across all US commercial banks. This is the consumer's canary in the coal mine — rising delinquencies mean households are running out of cushion. Watch the TREND more than the level: an accelerating rise from a low base is more alarming than a high but flat reading.
+                <div class="tooltip-text">% of credit card loan balances 30+ days past due across all US commercial banks. This is the consumer's canary in the coal mine — rising delinquencies mean households are running out of cushion. Watch the TREND more than the level: an accelerating rise from a low base is more alarming than a high but flat reading.</div>
+                <div class="tb-bands"><div class="tb-title">Scoring bands</div><div class="tb-row"><span class="tb-dot" style="background:#3a7d44"></span><span class="tb-name">Benign</span><span class="tb-val">&lt; 3.0%</span></div><div class="tb-row"><span class="tb-dot" style="background:#c9a227"></span><span class="tb-name">Normal</span><span class="tb-val">3.0% – 4.0%</span></div><div class="tb-row"><span class="tb-dot" style="background:#d96704"></span><span class="tb-name">Tightening</span><span class="tb-val">4.0% – 5.0%</span></div><div class="tb-row"><span class="tb-dot" style="background:#b3001b"></span><span class="tb-name">Stressed</span><span class="tb-val">≥ 5.0%</span></div></div>
               </div>
             
             </span>
@@ -398,7 +437,8 @@
               <button class="info-btn" aria-controls="tooltip-5" aria-expanded="false" aria-label="More info about KRE/SPY 3-Month">i</button>
               <div class="tooltip" id="tooltip-5" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                Regional bank ETF (KRE) performance vs. S&amp;P 500 (SPY) over 3 months. Banks are sensitive to credit conditions, deposit flight, and commercial real estate exposure. When bank stocks meaningfully underperform the broad market, equity investors are sniffing out credit problems before they show up in lagging economic data.
+                <div class="tooltip-text">Regional bank ETF (KRE) performance vs. S&amp;P 500 (SPY) over 3 months. Banks are sensitive to credit conditions, deposit flight, and commercial real estate exposure. When bank stocks meaningfully underperform the broad market, equity investors are sniffing out credit problems before they show up in lagging economic data.</div>
+                <div class="tb-bands"><div class="tb-title">Scoring bands</div><div class="tb-row"><span class="tb-dot" style="background:#3a7d44"></span><span class="tb-name">Benign</span><span class="tb-val">&gt; -1.2%</span></div><div class="tb-row"><span class="tb-dot" style="background:#c9a227"></span><span class="tb-name">Normal</span><span class="tb-val">-7.5% – -1.2%</span></div><div class="tb-row"><span class="tb-dot" style="background:#d96704"></span><span class="tb-name">Tightening</span><span class="tb-val">-13.8% – -7.5%</span></div><div class="tb-row"><span class="tb-dot" style="background:#b3001b"></span><span class="tb-name">Stressed</span><span class="tb-val">≤ -13.8%</span></div></div>
               </div>
             
             </span>
@@ -421,7 +461,8 @@
               <button class="info-btn" aria-controls="tooltip-6" aria-expanded="false" aria-label="More info about EM Debt (EMB) 6-Month">i</button>
               <div class="tooltip" id="tooltip-6" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                Emerging-market sovereign debt ETF (EMB) price change over 6 months. When global risk appetite contracts or the USD strengthens, EM sovereigns get hit first. Especially relevant for your LatAm holdings (NU, BLX) — EM stress is often a leading indicator of broader credit cycle turns.
+                <div class="tooltip-text">Emerging-market sovereign debt ETF (EMB) price change over 6 months. When global risk appetite contracts or the USD strengthens, EM sovereigns get hit first. Especially relevant for your LatAm holdings (NU, BLX) — EM stress is often a leading indicator of broader credit cycle turns.</div>
+                <div class="tb-bands"><div class="tb-title">Scoring bands</div><div class="tb-row"><span class="tb-dot" style="background:#3a7d44"></span><span class="tb-name">Benign</span><span class="tb-val">&gt; -1.5%</span></div><div class="tb-row"><span class="tb-dot" style="background:#c9a227"></span><span class="tb-name">Normal</span><span class="tb-val">-6.0% – -1.5%</span></div><div class="tb-row"><span class="tb-dot" style="background:#d96704"></span><span class="tb-name">Tightening</span><span class="tb-val">-10.5% – -6.0%</span></div><div class="tb-row"><span class="tb-dot" style="background:#b3001b"></span><span class="tb-name">Stressed</span><span class="tb-val">≤ -10.5%</span></div></div>
               </div>
             
             </span>
@@ -444,7 +485,8 @@
               <button class="info-btn" aria-controls="tooltip-7" aria-expanded="false" aria-label="More info about HYG/LQD 3-Month">i</button>
               <div class="tooltip" id="tooltip-7" role="tooltip">
                 <button class="tooltip-close" aria-label="Close">×</button>
-                Ratio of high-yield bond ETF (HYG) to investment-grade ETF (LQD). When this ratio falls, investors are dumping junk and crowding into safer credit — a flight-to-quality signal. It's a faster, more responsive proxy for HY OAS that updates intraday.
+                <div class="tooltip-text">Ratio of high-yield bond ETF (HYG) to investment-grade ETF (LQD). When this ratio falls, investors are dumping junk and crowding into safer credit — a flight-to-quality signal. It's a faster, more responsive proxy for HY OAS that updates intraday.</div>
+                <div class="tb-bands"><div class="tb-title">Scoring bands</div><div class="tb-row"><span class="tb-dot" style="background:#3a7d44"></span><span class="tb-name">Benign</span><span class="tb-val">&gt; -1.0%</span></div><div class="tb-row"><span class="tb-dot" style="background:#c9a227"></span><span class="tb-name">Normal</span><span class="tb-val">-4.0% – -1.0%</span></div><div class="tb-row"><span class="tb-dot" style="background:#d96704"></span><span class="tb-name">Tightening</span><span class="tb-val">-7.0% – -4.0%</span></div><div class="tb-row"><span class="tb-dot" style="background:#b3001b"></span><span class="tb-name">Stressed</span><span class="tb-val">≤ -7.0%</span></div></div>
               </div>
             
             </span>
@@ -461,7 +503,7 @@
   </div>
 
   <footer>
-    <span>FRED · Yahoo Finance · Updated 2026-05-25 01:12 UTC</span>
+    <span>FRED · Yahoo Finance · Updated 2026-05-25 01:26 UTC</span>
     <span>v1.1</span>
   </footer>
 </div>
