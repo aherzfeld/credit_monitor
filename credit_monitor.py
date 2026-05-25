@@ -999,7 +999,7 @@ def main():
     composite_history = append_history(composite, history_path)
     print(f"[INFO] History now has {len(composite_history)} entries")
 
-    out = here / "dashboard.html"
+    out = here / "index.html"
     render_dashboard(indicators, composite, out, composite_history=composite_history)
     print(f"[INFO] Dashboard written -> {out}")
 
