@@ -19,6 +19,7 @@ Schedule it daily via cron, Windows Task Scheduler, or GitHub Actions.
 from __future__ import annotations
 
 import json
+import math
 import smtplib
 import sys
 from dataclasses import dataclass, field, asdict
@@ -395,13 +396,23 @@ def build_indicators(cfg: dict) -> list[IndicatorResult]:
 # Composite scoring
 # ---------------------------------------------------------------------------
 
+class IncompleteIndicatorsError(RuntimeError):
+    """Raised when some indicators failed to load, so no composite is meaningful."""
+
+
 def composite_score(indicators: list[IndicatorResult]) -> float:
-    """Weighted average. Renormalizes if any indicators failed to load."""
+    """Weighted average over the full indicator set (weights sum to 1.0).
+
+    Raises IncompleteIndicatorsError if any indicator is missing: renormalizing
+    over the survivors produces a score that looks real but isn't comparable
+    to the history.
+    """
     total_weight = sum(i.weight for i in indicators)
-    if total_weight == 0:
-        return 0.0
-    weighted = sum(i.score * i.weight for i in indicators)
-    return weighted / total_weight
+    if not math.isclose(total_weight, 1.0):
+        raise IncompleteIndicatorsError(
+            f"only {total_weight:.0%} of composite weight loaded"
+        )
+    return sum(i.score * i.weight for i in indicators)
 
 
 def backfill_composite_history(cfg: dict, history_path: Path, days: int = 365) -> None:
@@ -1181,11 +1192,13 @@ def main():
 
     print("[INFO] Fetching indicators...")
     indicators = build_indicators(cfg)
-    if not indicators:
-        print("ERROR: No indicators loaded.", file=sys.stderr)
+    try:
+        composite = composite_score(indicators)
+    except IncompleteIndicatorsError as e:
+        # Exit before touching history, dashboard or alert state, so the last
+        # complete reading stands and the scheduled run shows as failed.
+        print(f"ERROR: {e}; nothing recorded.", file=sys.stderr)
         sys.exit(2)
-
-    composite = composite_score(indicators)
     band, _, _ = stress_band(composite)
     print(f"[INFO] Composite score: {composite:.1f}/100 ({band})")
     for i in indicators:
